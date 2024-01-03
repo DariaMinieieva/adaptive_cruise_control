@@ -1,12 +1,20 @@
 #include "adaptive_cruise_control/cruise_control_node.h"
 
 AdaptiveCruiseControl::AdaptiveCruiseControl() : Node("adaptive_cruise_control"),
+                                                 desired_speed{0.3},
                                                  prev_dist{0},
                                                  curr_dist{0},
-                                                 own_speed{0.3}{
+                                                 own_speed{0.3},
+                                                 safe_distance{2},
+                                                 critical_distance{0.4}
+{
     lidar_subscriber_ = this->create_subscription<lidar_scan>("/scan",
                                                                                rclcpp::SensorDataQoS(),
                                                                                std::bind(&AdaptiveCruiseControl::get_lidar_data, this, std::placeholders::_1));
+
+    odom_subscriber_ = this->create_subscription<odom_msg>("/odom",
+                                                              rclcpp::SensorDataQoS(),
+                                                              std::bind(&AdaptiveCruiseControl::get_odom_data, this, std::placeholders::_1));
 
     cmd_publisher_ = this->create_publisher<twist_msg>("/cmd_vel",
                                                               rclcpp::SensorDataQoS());
@@ -31,6 +39,8 @@ int AdaptiveCruiseControl::get_lidar_data(const lidar_scan::SharedPtr scan_data)
 
     auto intensities = scan_data->intensities;
 
+    auto cmd_msg = twist_msg();
+
 //    RCLCPP_INFO(this->get_logger(), "Time: %i:%i", time_sec, time_nanosec);
 //    RCLCPP_INFO(this->get_logger(), "Angle min-max: %f-%f", min_angle, max_angle);
 //    RCLCPP_INFO(this->get_logger(), "Angular distance between measurements: %f",  ang_dist_measurments);
@@ -41,49 +51,52 @@ int AdaptiveCruiseControl::get_lidar_data(const lidar_scan::SharedPtr scan_data)
     size_t count_dist = 0;
 
     for (size_t i = 2*ranges.size()/9; i < 5*ranges.size()/18; i++) {
-        if (ranges[i] >= min_range && ranges[i] <= 2) {
-//            RCLCPP_INFO(this->get_logger(), "Range: %zu %f", i, ranges[i]);
+        if (ranges[i] >= min_range && ranges[i] <= 5) {
             cum_dist += ranges[i];
             count_dist++;
         }
     }
 
-    double speed = 0;
+    double rel_speed = 0;
 
-    if (prev_dist == 0 && count_dist != 0) {
-        prev_dist = cum_dist / static_cast<double>(count_dist);
+    double distance = count_dist ? (cum_dist / static_cast<double>(count_dist)) : std::numeric_limits<double>::max();
+    RCLCPP_INFO(this->get_logger(), "distance: %f m", distance);
 
-        return 0;
+    if (prev_dist < 0.000001 && count_dist != 0) {
+
+        prev_dist = distance;
     } else if (count_dist != 0) {
-        curr_dist = cum_dist / static_cast<double>(count_dist);
-        speed = (curr_dist-prev_dist ) / time_between_scans;
 
+        curr_dist = distance;
+        rel_speed = (curr_dist-prev_dist ) / time_between_scans;
         prev_dist = curr_dist;
+    } else {
+
+        curr_dist = 0;
+        prev_dist = 0;
     }
 
-    auto cmd_msg = twist_msg();
+    RCLCPP_INFO(this->get_logger(), "relative speed: %f m/s", rel_speed);
 
-
-
-    speed += own_speed;
-    RCLCPP_INFO(this->get_logger(), "own speed: %f m/s", own_speed);
-
-
-    if (speed > 0.3) {
-        speed = 0.3;
-    } else if (speed < 0) {
-        speed = 0;
+    if (distance >= safe_distance || rel_speed + own_speed > desired_speed) {
+        own_speed = desired_speed;
+    } else if (distance <= critical_distance || rel_speed+own_speed < 0) {
+        own_speed = 0;
+        // this means the car is going on us ^)
+    } else {
+        own_speed += rel_speed;
     }
 
-    own_speed = speed;
-    cmd_msg.linear.x = speed;
-
+    cmd_msg.linear.x = own_speed;
     cmd_publisher_->publish(cmd_msg);
 
-    RCLCPP_INFO(this->get_logger(), "Speed: %f m/s", speed);
-
+    RCLCPP_INFO(this->get_logger(), "Speed: %f m/s", own_speed);
 
     return 0;
+}
+
+int AdaptiveCruiseControl::get_odom_data(odom_msg::SharedPtr odom_data) {
+return 0;
 }
 
 int main(int argc, char** argv)

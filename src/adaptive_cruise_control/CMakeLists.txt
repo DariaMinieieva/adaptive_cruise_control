@@ -11,12 +11,13 @@ find_package(rclcpp REQUIRED)
 find_package(irobot_create_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(cruise_control_node src/cruise_control_node.cpp)
-ament_target_dependencies(cruise_control_node rclcpp irobot_create_msgs sensor_msgs geometry_msgs)
+ament_target_dependencies(cruise_control_node rclcpp irobot_create_msgs sensor_msgs geometry_msgs nav_msgs)
 
 target_include_directories(cruise_control_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
