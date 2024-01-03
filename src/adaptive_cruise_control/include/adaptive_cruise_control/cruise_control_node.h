@@ -23,6 +23,8 @@ private:
 
     int get_lidar_data(lidar_scan::SharedPtr scan_data);
     int get_odom_data(odom_msg::SharedPtr odom_data);
+
+    int maintain_distance(lidar_scan::SharedPtr scan_data);
     rclcpp::Subscription<lidar_scan>::SharedPtr lidar_subscriber_;
     rclcpp::Subscription<odom_msg>::SharedPtr odom_subscriber_;
     rclcpp::Publisher<twist_msg>::SharedPtr cmd_publisher_;
