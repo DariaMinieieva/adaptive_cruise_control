@@ -22,7 +22,7 @@ AdaptiveCruiseControl::AdaptiveCruiseControl() : Node("adaptive_cruise_control")
 
 int AdaptiveCruiseControl::maintain_distance(lidar_scan::SharedPtr scan_data) {
     auto min_range = scan_data->range_min;
-    auto max_range = scan_data->range_max;
+//    auto max_range = scan_data->range_max;
 
     auto ranges = scan_data->ranges;
 
@@ -61,7 +61,7 @@ int AdaptiveCruiseControl::get_lidar_data(const lidar_scan::SharedPtr scan_data)
     auto time_between_scans = scan_data->scan_time;
 
     auto min_range = scan_data->range_min;
-    auto max_range = scan_data->range_max;
+//    auto max_range = scan_data->range_max;
 
     auto ranges = scan_data->ranges;
 
@@ -116,7 +116,7 @@ int AdaptiveCruiseControl::get_lidar_data(const lidar_scan::SharedPtr scan_data)
     return 0;
 }
 
-int AdaptiveCruiseControl::get_odom_data(odom_msg::SharedPtr odom_data) {
+int AdaptiveCruiseControl::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
 //    RCLCPP_INFO(this->get_logger(), "Estimated vel %f", odom_data->twist.twist.linear.x);
     return 0;
 

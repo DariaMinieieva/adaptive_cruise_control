@@ -7,7 +7,9 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
 find_package(irobot_create_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -27,5 +29,11 @@ target_compile_features(cruise_control_node PUBLIC c_std_99 cxx_std_17)  # Requi
 install(TARGETS cruise_control_node
   DESTINATION lib/${PROJECT_NAME})
 
+ament_python_install_package(${PROJECT_NAME})
+
+install(PROGRAMS
+        scripts/road_detect_main.py
+        DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()
