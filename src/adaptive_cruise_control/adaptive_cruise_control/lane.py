@@ -1,6 +1,6 @@
 import cv2  # Import the OpenCV library to enable computer vision
 import numpy as np  # Import the NumPy scientific computing library
-import edge_detection as edge  # Handles the detection of lane lines
+from src.adaptive_cruise_control.adaptive_cruise_control import edge_detection as edge
 import matplotlib.pyplot as plt  # Used for plotting and error checking
 
 # Author: Addison Sears-Collins
@@ -621,7 +621,7 @@ class Lane:
 
 from tqdm import tqdm
 def main():
-    filename = '../../data/original_lane_detection_5.jpeg'
+    filename = '../../../data/original_lane_detection_5.jpeg'
 
     for n in tqdm(['03', '08', '13', '19', '46', '54']):
         filename = f'../../../data/image-15743390{n}.png'
