@@ -621,7 +621,7 @@ class Lane:
 
 from tqdm import tqdm
 def main():
-    filename = '../../../data/original_lane_detection_5.jpeg'
+    filename = '../../data/original_lane_detection_5.jpeg'
 
     for n in tqdm(['03', '08', '13', '19', '46', '54']):
         filename = f'../../../data/image-15743390{n}.png'
