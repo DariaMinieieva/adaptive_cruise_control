@@ -301,19 +301,9 @@ class Lane:
             image_copy = frame
 
         cv2.putText(image_copy, 'Curve Radius: ' + str(self.left_curvem)[:7] + ' m',
-                    (int((
-                                 5 / 600) * self.width), int((
-                                                                     20 / 338) * self.height)),
-                    cv2.FONT_HERSHEY_SIMPLEX, (float((
-                                                             0.5 / 600) * self.width)), (
+                    (int((5 / 600) * self.width), int((20 / 338) * self.height)),
+                    cv2.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width)), (
                         255, 255, 255), 1, cv2.LINE_AA)
-        # cv2.putText(image_copy, 'Center Offset: ' + str(
-        #     self.center_offset)[:7] + ' cm', (int((
-        #                                                   5 / 600) * self.width), int((
-        #                                                                                       40 / 338) * self.height)),
-        #             cv2.FONT_HERSHEY_SIMPLEX, (float((
-        #                                                      0.5 / 600) * self.width)), (
-        #                 255, 255, 255), 1, cv2.LINE_AA)
 
         if plot == True:
             cv2.imshow("Image with Curvature and Offset", image_copy)
@@ -382,7 +372,7 @@ class Lane:
             left_line_pts = np.hstack((left_line_window1, left_line_window2))
 
             # Draw the lane onto the warped blank image
-            cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
+            cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0), lineType=cv2.LINE_AA)
             result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
             # Plot the figures
@@ -462,7 +452,6 @@ class Lane:
         # Extract the pixel coordinates for the left and right lane lines
         x = nonzerox[lane_inds]
         y = nonzeroy[lane_inds]
-        print([len(x) for x in [x, y]])
         if not np.all([len(x) > 0 for x in [x, y]]):
             print('Cannot detect lanes!!')
             return None
@@ -502,11 +491,11 @@ class Lane:
 
         return self.left_fit
 
-    def get_line_markings(self, frame=None):
+    def get_line_markings(self, frame=None, plot=False):
         """
         Isolates lane lines.
 
-          :param frame: The camera frame that contains the lanes we want to detect
+        :param frame: The camera frame that contains the lanes we want to detect
         :return: Binary (i.e. black and white) image containing the lane lines.
         """
         if frame is None:
@@ -515,53 +504,56 @@ class Lane:
         # Convert the video frame from BGR (blue, green, red)
         # color space to HLS (hue, saturation, lightness).
         hls = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
-
-        ################### Isolate possible lane line edges ######################
-
-        # Perform Sobel edge detection on the L (lightness) channel of
-        # the image to detect sharp discontinuities in the pixel intensities
-        # along the x and y axis of the video frame.
-        # sxbinary is a matrix full of 0s (black) and 255 (white) intensity values
-        # Relatively light pixels get made white. Dark pixels get made black.
-        _, sxbinary = threshold(hls[:, :, 1], thresh=(120, 255))
-        sxbinary1 = blur_gaussian(sxbinary, ksize=3)  # Reduce noise
-
-        # 1s will be in the cells with the highest Sobel derivative values
-        # (i.e. strongest lane line edges)
-        sxbinary = mag_thresh(sxbinary1, thresh=(0, 50))
-
-        ######################## Isolate possible lane lines ######################
-
-        # Perform binary thresholding on the S (saturation) channel
-        # of the video frame. A high saturation value means the hue color is pure.
-        # We expect lane lines to be nice, pure colors (i.e. solid white, yellow)
-        # and have high saturation channel values.
-        # s_binary is matrix full of 0s (black) and 255 (white) intensity values
-        # White in the regions with the purest hue colors (e.g. >80...play with
-        # this value for best results).
-        s_channel = hls[:, :, 2]  # use only the saturation channel data
-        _, s_binary = threshold(s_channel, (80, 255), thresh_type=cv2.THRESH_BINARY_INV)
-
-
-        # Perform binary thresholding on the R (red) channel of the
-        # original BGR video frame.
-        # r_thresh is a matrix full of 0s (black) and 255 (white) intensity values
-        # White in the regions with the richest red channel values (e.g. >120).
-        # Remember, pure white is bgr(255, 255, 255).
-        # Pure yellow is bgr(0, 255, 255). Both have high red channel values.
-        _, r_thresh = threshold(frame[:, :, 2], thresh=(120, 255), thresh_type=cv2.THRESH_BINARY_INV)
-
-        # Lane lines should be pure in color and have high red channel values
-        # Bitwise AND operation to reduce noise and black-out any pixels that
-        # don't appear to be nice, pure, solid colors (like white or yellow lane
-        # lines.)
-        rs_binary = cv2.bitwise_and(s_binary, r_thresh)
-
-        ### Combine the possible lane lines with the possible lane line edges #####
-        # If you show rs_binary visually, you'll see that it is not that different
-        # from this return value. The edges of lane lines are thin lines of pixels.
-        self.lane_line_markings = cv2.bitwise_or(rs_binary, sxbinary.astype(
-            np.uint8))
+        mask = cv2.inRange(hls, (50, 70, 20), (125, 255, 255))
+        self.lane_line_markings = mask.astype(np.uint8)
+        if plot:
+            plt.imshow(mask, cmap='gray')
+            plt.show()
+        # ################### Isolate possible lane line edges ######################
+        #
+        # # Perform Sobel edge detection on the L (lightness) channel of
+        # # the image to detect sharp discontinuities in the pixel intensities
+        # # along the x and y axis of the video frame.
+        # # sxbinary is a matrix full of 0s (black) and 255 (white) intensity values
+        # # Relatively light pixels get made white. Dark pixels get made black.
+        # _, sxbinary = threshold(hls[:, :, 1], thresh=(0, 255))
+        # sxbinary1 = blur_gaussian(sxbinary, ksize=3)  # Reduce noise
+        #
+        # # 1s will be in the cells with the highest Sobel derivative values
+        # # (i.e. strongest lane line edges)
+        # sxbinary = mag_thresh(sxbinary1, thresh=(0, 255))
+        #
+        # ######################## Isolate possible lane lines ######################
+        #
+        # # Perform binary thresholding on the S (saturation) channel
+        # # of the video frame. A high saturation value means the hue color is pure.
+        # # We expect lane lines to be nice, pure colors (i.e. solid white, yellow)
+        # # and have high saturation channel values.
+        # # s_binary is matrix full of 0s (black) and 255 (white) intensity values
+        # # White in the regions with the purest hue colors (e.g. >80...play with
+        # # this value for best results).
+        # s_channel = hls[:, :, 2]  # use only the saturation channel data
+        # _, s_binary = threshold(s_channel, (0, 255), thresh_type=cv2.THRESH_BINARY_INV)
+        #
+        #
+        # # Perform binary thresholding on the R (red) channel of the
+        # # original BGR video frame.
+        # # r_thresh is a matrix full of 0s (black) and 255 (white) intensity values
+        # # White in the regions with the richest red channel values (e.g. >120).
+        # # Remember, pure white is bgr(255, 255, 255).
+        # # Pure yellow is bgr(0, 255, 255). Both have high red channel values.
+        # _, b_thresh = threshold(frame[:, :, 0], thresh=(150, 255), thresh_type=cv2.THRESH_BINARY_INV)
+        # # Lane lines should be pure in color and have high red channel values
+        # # Bitwise AND operation to reduce noise and black-out any pixels that
+        # # don't appear to be nice, pure, solid colors (like white or yellow lane
+        # # lines.)
+        # rs_binary = cv2.bitwise_and(s_binary, b_thresh)
+        #
+        # ### Combine the possible lane lines with the possible lane line edges #####
+        # # If you show rs_binary visually, you'll see that it is not that different
+        # # from this return value. The edges of lane lines are thin lines of pixels.
+        # self.lane_line_markings = cv2.bitwise_or(rs_binary, sxbinary.astype(
+        #     np.uint8))
         return self.lane_line_markings
 
     def histogram_peak(self):
@@ -584,15 +576,10 @@ class Lane:
         color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 
         # Recast the x and y points into usable format for cv2.fillPoly()
-        pts_left = np.array([np.transpose(np.vstack([
+        pts = np.array([np.transpose(np.vstack([
             self.left_fitx, self.ploty]))])
-        # pts_right = np.array([np.flipud(np.transpose(np.vstack([
-        #     self.right_fitx, self.ploty])))])
-        # pts = np.hstack((pts_left, pts_right))
-        pts = pts_left
         # Draw lane on the warped blank image
-        cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
-
+        cv2.polylines(color_warp, np.int_([pts]), isClosed=False, color=(255, 255, 0), thickness=40, lineType=cv2.LINE_AA)
         # Warp the blank back to original image space using inverse perspective
         # matrix (Minv)
         newwarp = cv2.warpPerspective(color_warp, self.inv_transformation_matrix, (
@@ -689,8 +676,10 @@ class Lane:
 
 
 def main():
-    dirpath = '../../../outputs_2'
-    for filename in os.listdir(dirpath):
+    dirpath = '../../../data'
+    # files = os.listdir(dirpath)
+    files = ['IMG_2382.jpeg']
+    for filename in files:
 
         # Load a frame (or image)
         original_frame = cv2.imread(os.path.join(dirpath, filename))
@@ -720,7 +709,7 @@ def main():
             continue
 
         # Fill in the lane line
-        lane_obj.get_lane_line_previous_window(fit, plot=True)
+        lane_obj.get_lane_line_previous_window(fit, plot=False)
 
         # Overlay lines on the original frame
         frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
