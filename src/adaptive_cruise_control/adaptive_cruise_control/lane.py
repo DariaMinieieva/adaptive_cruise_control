@@ -1,3 +1,5 @@
+import os
+
 import cv2  # Import the OpenCV library to enable computer vision
 import numpy as np  # Import the NumPy scientific computing library
 # import adaptive_criuse_control.edge_detection as edge
@@ -212,10 +214,10 @@ class Lane:
         height = self.orig_frame.shape[0]
         bottom_left = self.left_fit[0] * height ** 2 + self.left_fit[
             1] * height + self.left_fit[2]
-        bottom_right = self.right_fit[0] * height ** 2 + self.right_fit[
-            1] * height + self.right_fit[2]
-
-        center_lane = (bottom_right - bottom_left) / 2 + bottom_left
+        # bottom_right = self.right_fit[0] * height ** 2 + self.right_fit[
+        #     1] * height + self.right_fit[2]
+        center_lane = bottom_left
+        # center_lane = (bottom_right - bottom_left) / 2 + bottom_left
         center_offset = (np.abs(car_location) - np.abs(
             center_lane)) * self.XM_PER_PIX * 100
 
@@ -240,24 +242,24 @@ class Lane:
         # Fit polynomial curves to the real world environment
         left_fit_cr = np.polyfit(self.lefty * self.YM_PER_PIX, self.leftx * (
             self.XM_PER_PIX), 2)
-        right_fit_cr = np.polyfit(self.righty * self.YM_PER_PIX, self.rightx * (
-            self.XM_PER_PIX), 2)
+        # right_fit_cr = np.polyfit(self.righty * self.YM_PER_PIX, self.rightx * (
+        #     self.XM_PER_PIX), 2)
 
         # Calculate the radii of curvature
         left_curvem = ((1 + (2 * left_fit_cr[0] * y_eval * self.YM_PER_PIX + left_fit_cr[
             1]) ** 2) ** 1.5) / np.absolute(2 * left_fit_cr[0])
-        right_curvem = ((1 + (2 * right_fit_cr[
-            0] * y_eval * self.YM_PER_PIX + right_fit_cr[
-                                  1]) ** 2) ** 1.5) / np.absolute(2 * right_fit_cr[0])
+        # right_curvem = ((1 + (2 * right_fit_cr[
+        #     0] * y_eval * self.YM_PER_PIX + right_fit_cr[
+        #                           1]) ** 2) ** 1.5) / np.absolute(2 * right_fit_cr[0])
 
         # Display on terminal window
         if print_to_terminal == True:
-            print(left_curvem, 'm', right_curvem, 'm')
+            print(left_curvem, 'm')
 
         self.left_curvem = left_curvem
-        self.right_curvem = right_curvem
+        # self.right_curvem = right_curvem
 
-        return left_curvem, right_curvem
+        return left_curvem
 
     def calculate_histogram(self, frame=None, plot=True):
         """
@@ -298,8 +300,7 @@ class Lane:
         else:
             image_copy = frame
 
-        cv2.putText(image_copy, 'Curve Radius: ' + str((
-                                                               self.left_curvem + self.right_curvem) / 2)[:7] + ' m',
+        cv2.putText(image_copy, 'Curve Radius: ' + str(self.left_curvem)[:7] + ' m',
                     (int((
                                  5 / 600) * self.width), int((
                                                                      20 / 338) * self.height)),
@@ -320,7 +321,7 @@ class Lane:
 
         return image_copy
 
-    def get_lane_line_previous_window(self, left_fit, right_fit, plot=False):
+    def get_lane_line_previous_window(self, left_fit, plot=False):
         """
         Use the lane line from the previous sliding window to get the parameters
         for the polynomial line for filling in the lane line
@@ -342,38 +343,26 @@ class Lane:
                 nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
                                   nonzerox < (left_fit[0] * (
                                   nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
-        right_lane_inds = ((nonzerox > (right_fit[0] * (
-                nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] - margin)) & (
-                                   nonzerox < (right_fit[0] * (
-                                   nonzeroy ** 2) + right_fit[1] * nonzeroy + right_fit[2] + margin)))
+
         self.left_lane_inds = left_lane_inds
-        self.right_lane_inds = right_lane_inds
 
         # Get the left and right lane line pixel locations
         leftx = nonzerox[left_lane_inds]
         lefty = nonzeroy[left_lane_inds]
-        rightx = nonzerox[right_lane_inds]
-        righty = nonzeroy[right_lane_inds]
 
         self.leftx = leftx
-        self.rightx = rightx
         self.lefty = lefty
-        self.righty = righty
 
         # Fit a second order polynomial curve to each lane line
         left_fit = np.polyfit(lefty, leftx, 2)
-        right_fit = np.polyfit(righty, rightx, 2)
         self.left_fit = left_fit
-        self.right_fit = right_fit
 
         # Create the x and y values to plot on the image
         ploty = np.linspace(
             0, self.warped_frame.shape[0] - 1, self.warped_frame.shape[0])
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-        right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
         self.ploty = ploty
         self.left_fitx = left_fitx
-        self.right_fitx = right_fitx
 
         if plot == True:
             # Generate images to draw on
@@ -383,8 +372,6 @@ class Lane:
 
             # Add color to the left and right line pixels
             out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [
-                0, 0, 255]
             # Create a polygon to show the search window area, and recast
             # the x and y points into a usable format for cv2.fillPoly()
             margin = self.margin
@@ -393,15 +380,9 @@ class Lane:
             left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([
                 left_fitx + margin, ploty])))])
             left_line_pts = np.hstack((left_line_window1, left_line_window2))
-            right_line_window1 = np.array([np.transpose(np.vstack([
-                right_fitx - margin, ploty]))])
-            right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([
-                right_fitx + margin, ploty])))])
-            right_line_pts = np.hstack((right_line_window1, right_line_window2))
 
             # Draw the lane onto the warped blank image
             cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
-            cv2.fillPoly(window_img, np.int_([right_line_pts]), (0, 255, 0))
             result = cv2.addWeighted(out_img, 1, window_img, 0.3, 0)
 
             # Plot the figures
@@ -412,7 +393,6 @@ class Lane:
             ax2.imshow(self.warped_frame, cmap='gray')
             ax3.imshow(result)
             ax3.plot(left_fitx, ploty, color='yellow')
-            ax3.plot(right_fitx, ploty, color='yellow')
             ax1.set_title("Original Frame")
             ax2.set_title("Warped Frame")
             ax3.set_title("Warped Frame With Search Window")
@@ -441,14 +421,12 @@ class Lane:
         nonzerox = np.array(nonzero[1])
 
         # Store the pixel indices for the left and right lane lines
-        left_lane_inds = []
-        right_lane_inds = []
+        lane_inds = []
 
         # Current positions for pixel indices for each window,
         # which we will continue to update
-        leftx_base, rightx_base = self.histogram_peak()
-        leftx_current = leftx_base
-        rightx_current = rightx_base
+        x_base = self.histogram_peak()
+        x_current = x_base
 
         # Go through one window at a time
         no_of_windows = self.no_of_windows
@@ -458,58 +436,48 @@ class Lane:
             # Identify window boundaries in x and y (and right and left)
             win_y_low = self.warped_frame.shape[0] - (window + 1) * window_height
             win_y_high = self.warped_frame.shape[0] - window * window_height
-            win_xleft_low = leftx_current - margin
-            win_xleft_high = leftx_current + margin
-            win_xright_low = rightx_current - margin
-            win_xright_high = rightx_current + margin
+            win_xleft_low = x_current - margin
+            win_xleft_high = x_current + margin
+            # win_xright_low = rightx_current - margin
+            # win_xright_high = rightx_current + margin
             cv2.rectangle(frame_sliding_window, (win_xleft_low, win_y_low), (
                 win_xleft_high, win_y_high), (255, 255, 255), 2)
-            cv2.rectangle(frame_sliding_window, (win_xright_low, win_y_low), (
-                win_xright_high, win_y_high), (255, 255, 255), 2)
+            # cv2.rectangle(frame_sliding_window, (win_xright_low, win_y_low), (
+            #     win_xright_high, win_y_high), (255, 255, 255), 2)
 
             # Identify the nonzero pixels in x and y within the window
-            good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
-                              (nonzerox >= win_xleft_low) & (
-                                      nonzerox < win_xleft_high)).nonzero()[0]
-            good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
-                               (nonzerox >= win_xright_low) & (
-                                       nonzerox < win_xright_high)).nonzero()[0]
+            good_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high)).nonzero()[0]
 
             # Append these indices to the lists
-            left_lane_inds.append(good_left_inds)
-            right_lane_inds.append(good_right_inds)
+            lane_inds.append(good_inds)
 
             # If you found > minpix pixels, recenter next window on mean position
             minpix = self.minpix
-            if len(good_left_inds) > minpix:
-                leftx_current = int(np.mean(nonzerox[good_left_inds]))
-            if len(good_right_inds) > minpix:
-                rightx_current = int(np.mean(nonzerox[good_right_inds]))
+            if len(good_inds) > minpix:
+                x_current = int(np.mean(nonzerox[good_inds]))
 
         # Concatenate the arrays of indices
-        left_lane_inds = np.concatenate(left_lane_inds)
-        right_lane_inds = np.concatenate(right_lane_inds)
+        lane_inds = np.concatenate(lane_inds)
 
         # Extract the pixel coordinates for the left and right lane lines
-        leftx = nonzerox[left_lane_inds]
-        lefty = nonzeroy[left_lane_inds]
-        rightx = nonzerox[right_lane_inds]
-        righty = nonzeroy[right_lane_inds]
+        x = nonzerox[lane_inds]
+        y = nonzeroy[lane_inds]
+        print([len(x) for x in [x, y]])
+        if not np.all([len(x) > 0 for x in [x, y]]):
+            print('Cannot detect lanes!!')
+            return None
 
         # Fit a second order polynomial curve to the pixel coordinates for
         # the left and right lane lines
-        left_fit = np.polyfit(lefty, leftx, 2)
-        right_fit = np.polyfit(righty, rightx, 2)
+        left_fit = np.polyfit(y, x, 2)
 
         self.left_fit = left_fit
-        self.right_fit = right_fit
 
         if plot == True:
             # Create the x and y values to plot on the image
             ploty = np.linspace(
                 0, frame_sliding_window.shape[0] - 1, frame_sliding_window.shape[0])
             left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
             # Generate an image to visualize the result
             out_img = np.dstack((
@@ -517,9 +485,7 @@ class Lane:
                     frame_sliding_window))) * 255
 
             # Add color to the left line pixels and right line pixels
-            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [
-                0, 0, 255]
+            out_img[nonzeroy[lane_inds], nonzerox[lane_inds]] = [255, 0, 0]
 
             # Plot the figure with the sliding windows
             figure, (ax1, ax2, ax3) = plt.subplots(3, 1)  # 3 rows, 1 column
@@ -529,13 +495,12 @@ class Lane:
             ax2.imshow(frame_sliding_window, cmap='gray')
             ax3.imshow(out_img)
             ax3.plot(left_fitx, ploty, color='yellow')
-            ax3.plot(right_fitx, ploty, color='yellow')
             ax1.set_title("Original Frame")
             ax2.set_title("Warped Frame with Sliding Windows")
             ax3.set_title("Detected Lane Lines with Sliding Windows")
             plt.show()
 
-        return self.left_fit, self.right_fit
+        return self.left_fit
 
     def get_line_markings(self, frame=None):
         """
@@ -606,12 +571,7 @@ class Lane:
         Return the x coordinate of the left histogram peak and the right histogram
         peak.
         """
-        midpoint = int(self.histogram.shape[0] / 2)
-        leftx_base = np.argmax(self.histogram[:midpoint])
-        rightx_base = np.argmax(self.histogram[midpoint:]) + midpoint
-
-        # (x coordinate of left peak, x coordinate of right peak)
-        return leftx_base, rightx_base
+        return np.argmax(self.histogram)
 
     def overlay_lane_lines(self, plot=False):
         """
@@ -626,10 +586,10 @@ class Lane:
         # Recast the x and y points into usable format for cv2.fillPoly()
         pts_left = np.array([np.transpose(np.vstack([
             self.left_fitx, self.ploty]))])
-        pts_right = np.array([np.flipud(np.transpose(np.vstack([
-            self.right_fitx, self.ploty])))])
-        pts = np.hstack((pts_left, pts_right))
-
+        # pts_right = np.array([np.flipud(np.transpose(np.vstack([
+        #     self.right_fitx, self.ploty])))])
+        # pts = np.hstack((pts_left, pts_right))
+        pts = pts_left
         # Draw lane on the warped blank image
         cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
@@ -729,12 +689,11 @@ class Lane:
 
 
 def main():
-    filename = '../../../data/original_lane_detection_5.jpeg'
+    dirpath = '../../../outputs_2'
+    for filename in os.listdir(dirpath):
 
-    for n in tqdm(['03', '08', '13', '19', '46', '54']):
-        filename = f'../../../data/image-15743390{n}.png'
         # Load a frame (or image)
-        original_frame = cv2.imread(filename)
+        original_frame = cv2.imread(os.path.join(dirpath, filename))
 
         # Create a Lane object
         lane_obj = Lane(orig_frame=original_frame)
@@ -754,11 +713,14 @@ def main():
         histogram = lane_obj.calculate_histogram(plot=False)
 
         # Find lane line pixels using the sliding window method
-        left_fit, right_fit = lane_obj.get_lane_line_indices_sliding_windows(
-            plot=False)
+        fit = lane_obj.get_lane_line_indices_sliding_windows(plot=True)
+        if fit is None:
+            cv2.imshow("Image with Curvature and Offset", original_frame)
+            cv2.waitKey(0)
+            continue
 
         # Fill in the lane line
-        lane_obj.get_lane_line_previous_window(left_fit, right_fit, plot=False)
+        lane_obj.get_lane_line_previous_window(fit, plot=True)
 
         # Overlay lines on the original frame
         frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
@@ -779,7 +741,7 @@ def main():
         new_filename = new_filename + '_lane.png'
 
         # Save the new image in the working directory
-        cv2.imwrite(new_filename, frame_with_lane_lines2)
+        # cv2.imwrite(new_filename, frame_with_lane_lines2)
 
         # Display the image
         # cv2.imshow("Image", lane_line_markings)
