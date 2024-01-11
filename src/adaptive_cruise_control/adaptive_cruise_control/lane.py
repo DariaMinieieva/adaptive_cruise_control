@@ -241,20 +241,23 @@ class Lane:
 
         # Fit polynomial curves to the real world environment
         left_fit_cr = np.polyfit(self.lefty * self.YM_PER_PIX, self.leftx * (
-            self.XM_PER_PIX), 2)
+            self.XM_PER_PIX), 1)
         # right_fit_cr = np.polyfit(self.righty * self.YM_PER_PIX, self.rightx * (
         #     self.XM_PER_PIX), 2)
 
         # Calculate the radii of curvature
         left_curvem = ((1 + (2 * left_fit_cr[0] * y_eval * self.YM_PER_PIX + left_fit_cr[
             1]) ** 2) ** 1.5) / np.absolute(2 * left_fit_cr[0])
+        print(left_fit_cr, ((1 + (2 * left_fit_cr[0] * y_eval * self.YM_PER_PIX + left_fit_cr[
+            1]) ** 2) ** 1.5))
+        left_curvem = np.rad2deg(np.arctan(2 * left_fit_cr[0] * y_eval * self.YM_PER_PIX))
         # right_curvem = ((1 + (2 * right_fit_cr[
         #     0] * y_eval * self.YM_PER_PIX + right_fit_cr[
         #                           1]) ** 2) ** 1.5) / np.absolute(2 * right_fit_cr[0])
 
         # Display on terminal window
         if print_to_terminal == True:
-            print(left_curvem, 'm')
+            print(left_curvem, 'deg')
 
         self.left_curvem = left_curvem
         # self.right_curvem = right_curvem
@@ -329,10 +332,13 @@ class Lane:
         nonzerox = np.array(nonzero[1])
 
         # Store left and right lane pixel indices
-        left_lane_inds = ((nonzerox > (left_fit[0] * (
-                nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
-                                  nonzerox < (left_fit[0] * (
-                                  nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
+        # left_lane_inds = ((nonzerox > (left_fit[0] * (
+        #         nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
+        #                           nonzerox < (left_fit[0] * (
+        #                           nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
+
+        left_lane_inds = ((nonzerox > (left_fit[0] * nonzeroy + left_fit[1] - margin)) & (
+                                  nonzerox < (left_fit[0] * nonzeroy + left_fit[1] + margin)))
 
         self.left_lane_inds = left_lane_inds
 
@@ -458,7 +464,7 @@ class Lane:
 
         # Fit a second order polynomial curve to the pixel coordinates for
         # the left and right lane lines
-        left_fit = np.polyfit(y, x, 2)
+        left_fit = np.polyfit(y, x, 1)
 
         self.left_fit = left_fit
 
@@ -466,7 +472,8 @@ class Lane:
             # Create the x and y values to plot on the image
             ploty = np.linspace(
                 0, frame_sliding_window.shape[0] - 1, frame_sliding_window.shape[0])
-            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            # left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            left_fitx = left_fit[0] * ploty + left_fit[1]
 
             # Generate an image to visualize the result
             out_img = np.dstack((
@@ -715,14 +722,14 @@ def main():
         frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
 
         # Calculate lane line curvature (left and right lane lines)
-        lane_obj.calculate_curvature(print_to_terminal=False)
+        lane_obj.calculate_curvature(print_to_terminal=True)
 
         # Calculate center offset
         lane_obj.calculate_car_position(print_to_terminal=False)
 
         # Display curvature and center offset on image
         frame_with_lane_lines2 = lane_obj.display_curvature_offset(
-            frame=frame_with_lane_lines, plot=True)
+            frame=frame_with_lane_lines, plot=False)
 
         # Create the output file name by removing the '.jpg' part
         size = len(filename)
@@ -736,10 +743,10 @@ def main():
         # cv2.imshow("Image", lane_line_markings)
 
         # Display the window until any key is pressed
-        cv2.waitKey(0)
+        # cv2.waitKey(0)
 
         # Close all windows
-        cv2.destroyAllWindows()
+        # cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
