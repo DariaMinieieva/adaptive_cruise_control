@@ -5,11 +5,15 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Twist
 import numpy as np
 import cv2
+from time import sleep
 
-from adaptive_cruise_control.lane import Lane
+from adaptive_cruise_control.lane_detection import getLaneCurve
 
+
+LEN_AVG = 10
 
 class RoadDetectionNode(Node):
 
@@ -21,42 +25,51 @@ class RoadDetectionNode(Node):
             '/oakd/rgb/preview/image_raw',
             self.image_callback,
             qos_profile_sensor_data)
-        self.i = 0
+        self.cmd_vel_publisher = self.create_publisher(Twist, "/cmd_vel", qos_profile_sensor_data)
+        self.velocities = []
+        self.weights = np.linspace(0, 1, LEN_AVG)
 
     def image_callback(self, image_msg):
         width, height = image_msg.width, image_msg.height
         frame = np.array(image_msg.data).reshape(height, width, 3)
-        # import matplotlib.pyplot as plt
-        # plt.imshow(frame)
-        # plt.show()
-        # exit()
-        # self.get_logger().info(f"{width}x{height}. frame: {frame.shape}")
+        curveVal1 = -getLaneCurve(frame, 2)
+        curveVal = curveVal1
 
-        # lane_obj = Lane(orig_frame=frame)
-        # lane_obj.get_line_markings()
-        # lane_obj.plot_roi(plot=False)
-        #
-        # lane_obj.perspective_transform(plot=False)
-        # lane_obj.calculate_histogram(plot=False)
-        # left_fit, right_fit = lane_obj.get_lane_line_indices_sliding_windows(
-        #     plot=False)
-        #
-        # lane_obj.get_lane_line_previous_window(left_fit, right_fit, plot=False)
-        #
-        # curvature = lane_obj.calculate_curvature(print_to_terminal=False)
-        # curvature = (curvature[0] + curvature[1]) / 2
+        sensitivity = 1.3  # MAX SPEED
+        maxVAl = 70
+        curveVal = min(curveVal, maxVAl)
+        curveVal = max(curveVal, -maxVAl)
+        thres = 5
+        if 0 < curveVal < thres:
+            curveVal = 0
+        elif 0 > curveVal > -thres:
+            curveVal = 0
 
-        # self.get_logger().info(f"curvature: {curvature}")
-        self.i += 1
-        if self.i % 5 == 0:
-            cv2.imwrite(f"outputs_2/{self.i}_frame.png", frame)
-            self.get_logger().info(f"i: {self.i}")
+        if np.abs(curveVal) < 10:
+            self.velocities.append(0.4)
+        if np.abs(curveVal) < 15:
+            self.velocities.append(0.25)
+        else:
+            self.velocities.append(0.1)
 
-        # frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
-        # frame_with_lane_lines2 = lane_obj.display_curvature_offset(
-        #     frame=frame_with_lane_lines, plot=True)
+        if len(self.velocities) > 15:
+            self.velocities.pop(0)
+            linear_velocity = np.average(self.velocities, weights=self.weights, axis=-1)
+        else:
+            linear_velocity = np.average(self.velocities)
+        # linear_velocity = 0.1
+        self.get_logger().info(f'linear_velocity: {linear_velocity}, curveVal: {curveVal}')
 
 
+        msg_to_send = Twist()
+        curveVal = np.deg2rad(-curveVal)
+
+        msg_to_send.linear.x = linear_velocity
+        msg_to_send.angular.z = curveVal
+
+        cv2.waitKey(1)
+        self.cmd_vel_publisher.publish(msg_to_send)
+        sleep(0.1)
 
 
 def main(args=None):
