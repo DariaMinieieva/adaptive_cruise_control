@@ -129,8 +129,8 @@ def getLaneCurve(img, display=2):
 
     #### STEP 3
     middlePoint, imgHist = getHistogram(imgWarp, display=True, minPer=0.5, region=5)
-    curveAveragePoint, imgHist = getHistogram(imgWarp, display=True, minPer=0.8)
-    curveRaw = ((wT // 2) - curveAveragePoint) / wT * 90
+    curveAveragePoint, imgHist = getHistogram(imgWarp, display=True, minPer=0.2)
+    curveRaw = ((wT // 2) - curveAveragePoint) / wT * 100
 
     #### STEP 4
     curveList.append(curveRaw)
@@ -144,7 +144,7 @@ def getLaneCurve(img, display=2):
     if display != 0:
         imgInvWarp = warpImg(imgWarp, points, wT, hT, inv=True)
         imgInvWarp = cv2.cvtColor(imgInvWarp, cv2.COLOR_GRAY2BGR)
-        imgInvWarp[0:hT // 3, 0:wT] = 0, 0, 0
+        # imgInvWarp[0:hT // 3, 0:wT] = 0, 0, 0
         imgLaneColor = np.zeros_like(img)
         imgLaneColor[:] = 0, 255, 0
         imgLaneColor = cv2.bitwise_and(imgInvWarp, imgLaneColor)
@@ -167,9 +167,9 @@ def getLaneCurve(img, display=2):
         cv2.imshow('Resutlt', imgResult)
 
     #### NORMALIZATION
-    curve = curve / 1.3
-    curve = min(curve, 75)
-    curve = max(curve, -75)
+    curve = curve / 1.25
+    curve = min(curve, 90)
+    curve = max(curve, -90)
 
     return curve
 
