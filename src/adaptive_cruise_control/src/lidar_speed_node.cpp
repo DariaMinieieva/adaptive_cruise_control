@@ -40,24 +40,6 @@ LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
 //    // open socket
 
     sfd = socket(AF_INET, SOCK_STREAM, 0);
-//
-//    if (sfd < 0) {
-//        RCLCPP_ERROR(this->get_logger(), "socket error");
-////        return CREATE_SOCKET_ERR;
-//    }
-//    // bind
-//    if (bind(sfd, (struct sockaddr*) &server_info, sizeof (struct sockaddr_in)) < 0) {
-//        RCLCPP_ERROR(this->get_logger(),"bind error");
-////        return BIND_ERROR;
-//    }
-//    // listen
-//
-//    if (listen(sfd, 0) < 0) {
-//        RCLCPP_ERROR(this->get_logger(),"listen error");
-////        return LISTEN_ERROR;
-//    }
-
-
 
 }
 
@@ -196,14 +178,13 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
     if ((status = connect(sfd, (struct sockaddr*)&server_info,
                           sizeof(server_info))) < 0) {
         RCLCPP_ERROR(this->get_logger(),"\nConnection Failed \n");
-//        return -1;
     }
 
     send(sfd, to_send.c_str(), to_send.length(), 0);
 
 
     // closing the connected socket
-    close(sfd);
+//    close(sfd);
 
 
     return 0;
