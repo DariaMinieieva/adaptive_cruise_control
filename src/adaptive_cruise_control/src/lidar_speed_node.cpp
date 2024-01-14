@@ -195,7 +195,7 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
 
     std::string to_send = std::to_string(odom_speed);
 
-    send(sfd, to_send, strlen(to_send), 0);
+    send(sfd, to_send.c_str(), to_send.length(), 0);
 
 
     // closing the connected socket
