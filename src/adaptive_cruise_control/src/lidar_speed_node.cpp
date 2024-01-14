@@ -110,14 +110,14 @@ int LidarSpeed::get_lidar_data(const lidar_scan::SharedPtr scan_data) {
     // Wait for the result.
 
 
-    while (!client_->wait_for_service(1s)) {
-        if (!rclcpp::ok()) {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
-        }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
-    }
-
-    auto result = client_->async_send_request(request, std::bind(&LidarSpeed::get_speed_callback, this, std::placeholders::_1));
+//    while (!client_->wait_for_service(1s)) {
+//        if (!rclcpp::ok()) {
+//            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+//        }
+//        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+//    }
+//
+//    auto result = client_->async_send_request(request, std::bind(&LidarSpeed::get_speed_callback, this, std::placeholders::_1));
 
 
 
