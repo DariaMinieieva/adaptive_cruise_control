@@ -169,7 +169,7 @@ int LidarSpeed::get_lidar_data(const lidar_scan::SharedPtr scan_data) {
         cmd_msg.linear.x = own_speed_loc;
     }
 
-        cmd_publisher_->publish(cmd_msg);
+//        cmd_publisher_->publish(cmd_msg);
 
     RCLCPP_INFO(this->get_logger(), "Speed: %f m/s", own_speed_loc);
 
