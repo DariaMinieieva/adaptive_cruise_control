@@ -41,6 +41,19 @@ LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
 
     sfd = socket(AF_INET, SOCK_STREAM, 0);
 
+    int status{};
+
+    struct sockaddr_in server_info = {0};
+    server_info.sin_family = AF_INET;
+    server_info.sin_port = htons(1338);
+    inet_pton(AF_INET, "192.168.185.5", &server_info.sin_addr.s_addr);
+
+
+    if ((status = connect(sfd, (struct sockaddr*)&server_info,
+                          sizeof(server_info))) < 0) {
+        RCLCPP_ERROR(this->get_logger(),"Connection Failed \n");
+    }
+
 }
 
 
@@ -167,18 +180,7 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
 
     std::string to_send = std::to_string(odom_speed);
 
-    int status{};
 
-    struct sockaddr_in server_info = {0};
-    server_info.sin_family = AF_INET;
-    server_info.sin_port = htons(1338);
-    inet_pton(AF_INET, "192.168.185.5", &server_info.sin_addr.s_addr);
-
-
-    if ((status = connect(sfd, (struct sockaddr*)&server_info,
-                          sizeof(server_info))) < 0) {
-        RCLCPP_ERROR(this->get_logger(),"Connection Failed \n");
-    }
 
     send(sfd, to_send.c_str(), to_send.length(), 0);
 
