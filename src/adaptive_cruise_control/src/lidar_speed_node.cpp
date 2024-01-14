@@ -177,14 +177,14 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
 
     if ((status = connect(sfd, (struct sockaddr*)&server_info,
                           sizeof(server_info))) < 0) {
-        RCLCPP_ERROR(this->get_logger(),"\nConnection Failed \n");
+        RCLCPP_ERROR(this->get_logger(),"Connection Failed \n");
     }
 
     send(sfd, to_send.c_str(), to_send.length(), 0);
 
 
     // closing the connected socket
-//    close(sfd);
+    close(sfd);
 
 
     return 0;
