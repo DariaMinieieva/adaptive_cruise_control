@@ -4,6 +4,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
+from service_speed_interfaces.srv import Velocities
+
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 import numpy as np
@@ -15,10 +17,15 @@ from adaptive_cruise_control.lane_detection import getLaneCurve
 
 LEN_AVG = 30
 
+from rclpy.callback_groups import ReentrantCallbackGroup
+
+from threading import Event
+
 class RoadDetectionNode(Node):
 
     def __init__(self):
         super().__init__('road_detection')
+        self.callback_group = ReentrantCallbackGroup()
 
         self.image_subscriber = self.create_subscription(
             Image,
@@ -31,6 +38,15 @@ class RoadDetectionNode(Node):
         self.weights = np.append(self.weights, self.weights[-5:])
         self.bins = np.array([0, 5, 30, 50, 90])
         self.corresponding_vels = np.array([0.4, 0.25, 0.1, 0.05])
+
+
+        self.srv = self.create_service(Velocities, 'get_speed', self.speed_callback)
+
+
+        self.lin_to_send = 0
+        self.ang_to_send = 0
+
+
 
     def image_callback(self, image_msg):
         width, height = image_msg.width, image_msg.height
@@ -68,11 +84,22 @@ class RoadDetectionNode(Node):
         curveVal = np.deg2rad(-curveVal)
 
         msg_to_send.linear.x = linear_velocity
+        self.lin_to_send = linear_velocity
+        self.ang_to_send = curveVal
         msg_to_send.angular.z = curveVal
-        self.cmd_vel_publisher.publish(msg_to_send)
+        # self.cmd_vel_publisher.publish(msg_to_send)
 
         cv2.waitKey(1)
         sleep(0.1)
+
+    def speed_callback(self, request, response):
+        response.linear_x = self.lin_to_send # set speed here
+        response.angular_z =  self.ang_to_send # set speed here
+
+        return response
+
+
+
 
 
 def main(args=None):
