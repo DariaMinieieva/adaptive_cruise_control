@@ -37,29 +37,25 @@ LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
     client_ = this->create_client<speed_srv>("get_speed");
 
 
-    // open socket
-    struct sockaddr_in server_info = {0};
-    server_info.sin_family = AF_INET;
-    server_info.sin_port = htons(1338);
-    inet_pton(AF_INET, "192.168.185.5", &server_info.sin_addr.s_addr);
+//    // open socket
 
     sfd = socket(AF_INET, SOCK_STREAM, 0);
-
-    if (sfd < 0) {
-        RCLCPP_ERROR(this->get_logger(), "socket error");
-//        return CREATE_SOCKET_ERR;
-    }
-    // bind
-    if (bind(sfd, (struct sockaddr*) &server_info, sizeof (struct sockaddr_in)) < 0) {
-        RCLCPP_ERROR(this->get_logger(),"bind error");
-//        return BIND_ERROR;
-    }
-    // listen
-
-    if (listen(sfd, 0) < 0) {
-        RCLCPP_ERROR(this->get_logger(),"listen error");
-//        return LISTEN_ERROR;
-    }
+//
+//    if (sfd < 0) {
+//        RCLCPP_ERROR(this->get_logger(), "socket error");
+////        return CREATE_SOCKET_ERR;
+//    }
+//    // bind
+//    if (bind(sfd, (struct sockaddr*) &server_info, sizeof (struct sockaddr_in)) < 0) {
+//        RCLCPP_ERROR(this->get_logger(),"bind error");
+////        return BIND_ERROR;
+//    }
+//    // listen
+//
+//    if (listen(sfd, 0) < 0) {
+//        RCLCPP_ERROR(this->get_logger(),"listen error");
+////        return LISTEN_ERROR;
+//    }
 
 }
 
@@ -183,21 +179,27 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
 
     odom_speed = odom_data->twist.twist.linear.x;
 
-    int cfd = accept(sfd, nullptr, 0);
-    if (cfd < 0) {
-        RCLCPP_INFO(this->get_logger(), "accept error");
-//        return ACCEPT_ERROR;
+    int status{};
+
+    struct sockaddr_in server_info = {0};
+    server_info.sin_family = AF_INET;
+    server_info.sin_port = htons(1338);
+    inet_pton(AF_INET, "192.168.185.5", &server_info.sin_addr.s_addr);
+
+
+    if ((status = connect(sfd, (struct sockaddr*)&server_info,
+                           sizeof(server_info))) < 0) {
+        RCLCPP_ERROR(this->get_logger(),"\nConnection Failed \n");
+//        return -1;
     }
 
     std::string to_send = std::to_string(odom_speed);
 
-    ssize_t sent = write(cfd, (void *) to_send.c_str(), to_send.length());
-    if (sent < 0) {
-        RCLCPP_INFO(this->get_logger(),"write error");
-//        return WRITE_ERROR;
-    }
-    // close
-    close(cfd);
+    send(sfd, to_send, strlen(to_send), 0);
+
+
+    // closing the connected socket
+    close(sfd);
 
 
     return 0;
