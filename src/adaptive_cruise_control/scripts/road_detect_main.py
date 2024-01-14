@@ -93,8 +93,8 @@ class RoadDetectionNode(Node):
         sleep(0.1)
 
     def speed_callback(self, request, response):
-        response.linear_x = self.lin_to_send # set speed here
-        response.angular_z =  self.ang_to_send # set speed here
+        response.linear_x = float(self.lin_to_send) # set speed here
+        response.angular_z =  float(self.ang_to_send) # set speed here
 
         return response
 

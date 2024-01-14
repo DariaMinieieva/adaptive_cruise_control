@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 
+//#define INCLUDE_SOCKET
+
 using namespace std::chrono_literals;
 
 LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
@@ -39,6 +41,8 @@ LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
 
 //    // open socket
 
+#ifdef INCLUDE_SOCKET
+
     sfd = socket(AF_INET, SOCK_STREAM, 0);
 
     int status{};
@@ -53,6 +57,8 @@ LidarSpeed::LidarSpeed() : Node("adaptive_cruise_control"),
                           sizeof(server_info))) < 0) {
         RCLCPP_ERROR(this->get_logger(),"Connection Failed \n");
     }
+
+#endif
 
 }
 
@@ -107,14 +113,14 @@ int LidarSpeed::get_lidar_data(const lidar_scan::SharedPtr scan_data) {
     // Wait for the result.
 
 
-//    while (!client_->wait_for_service(1s)) {
-//        if (!rclcpp::ok()) {
-//            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
-//        }
-//        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
-//    }
-//
-//    auto result = client_->async_send_request(request, std::bind(&LidarSpeed::get_speed_callback, this, std::placeholders::_1));
+    while (!client_->wait_for_service(1s)) {
+        if (!rclcpp::ok()) {
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+    }
+
+    auto result = client_->async_send_request(request, std::bind(&LidarSpeed::get_speed_callback, this, std::placeholders::_1));
 
 
 
@@ -162,7 +168,10 @@ int LidarSpeed::get_lidar_data(const lidar_scan::SharedPtr scan_data) {
         cmd_msg.linear.x = own_speed_loc;
     }
 
-//        cmd_publisher_->publish(cmd_msg);
+    if (cmd_msg.linear.x == 0.0)
+        cmd_msg.angular.z = 0.0;
+
+    cmd_publisher_->publish(cmd_msg);
 
     RCLCPP_INFO(this->get_logger(), "Speed: %f m/s", own_speed_loc);
 
@@ -177,7 +186,7 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
     odom_speed = odom_data->twist.twist.linear.x;
 
 
-
+#ifdef INCLUDE_SOCKET
     std::string to_send = std::to_string(odom_speed);
 
 
@@ -188,7 +197,7 @@ int LidarSpeed::get_odom_data([[maybe_unused]] odom_msg::SharedPtr odom_data) {
     // closing the connected socket
     close(sfd);
 
-
+#endif
     return 0;
 
 }
